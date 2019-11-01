@@ -4,7 +4,7 @@ import org.testng.annotations.Test;
 
 import static com.jayway.restassured.RestAssured.*;
 
-public class TC_002 {
+public class TC_002_get {
 
     @Test
     public void tc_002(){

@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 
 import static com.jayway.restassured.RestAssured.given;
 
-public class tc_003 {
+public class tc_003_post_string {
 
     @Test
     public void tc_003(){
