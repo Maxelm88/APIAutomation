@@ -1,0 +1,90 @@
+import com.cloudbees.hudson.plugins.folder.Folder
+
+
+    def folderName = ""
+	def redOnly = false;
+
+    def allJobs = hudson.model.Hudson.getInstance().getItems()
+	
+	String[] getJobsInFolder(String folder) {
+		return getJobsInFolderIfRed(folder, false);
+	}
+	
+    String[] getJobsInFolderIfRed (String folder, boolean redOnly) {
+		folderName = folder.replace("\\", "/")
+		this.redOnly = redOnly;
+		
+		def jobs = []
+		def allJobs = folder.contains("\\") ? getItemsInFolder(folder) : hudson.model.Hudson.getInstance().getItems()
+		//println "allJobs = " +allJobs
+        for(int i=0; i<allJobs.size(); i++){
+            def job = allJobs[i]
+            if(job instanceof hudson.model.Project /*&& job.getLastBuild() != null*/ ){
+                if (processJob(job) != null) jobs.add(processJob(job))
+            } else if(job instanceof Folder){
+                def res = processFolderByName(job)
+				if (res != null) jobs.addAll(res)
+            }
+        }
+		println "Picked up jobs: " +jobs
+		return jobs
+    }
+	
+	Item[] getItemsInFolder(String folderPath) {
+		def folders = ((String)folderPath).split("\\\\") as List
+		def items = hudson.model.Hudson.getInstance().getItems()
+		def found = false
+		println "folders = " +folders
+		println "items = " +items
+		while(!(folders.size() == 1)) {
+			found = false
+			for (item in items) {
+				if (item instanceof Folder && item.getFullName().contains(folders.get(0))) {
+					found = true
+					items = item.getItems()
+					folders.remove(0)
+					//println "items = " +items
+				}
+				if (found) break
+			}
+		}
+		
+			//println "folder = " +folders.get(0)
+		for (item in items) {
+			//println "item = " +item;
+			if (item instanceof Folder && item.getFullName().contains(folders.get(0))) return item.getItems()
+		}
+	}
+	
+    String[] processFolderByName(Item folder){
+		//println folderName
+		//println "full name = " +folder.getFullName()
+	
+        if(folder.getFullName().contains(folderName))
+            return processFolder(folder)
+    }
+
+    String[] processFolder(Item folder){
+        //println "Processing Folder: " +folder.getFullName()
+		def jobs = []
+		
+        folder.getItems().each{
+            if(it instanceof com.cloudbees.hudson.plugins.folder.AbstractFolder){
+                def res = processFolder(it)
+				if (res != null) jobs.addAll(res)
+            }else{
+                if (processJob(it) != null) jobs.add(processJob(it))
+            }
+        }
+		return jobs
+    }
+
+    String processJob(Item job){
+        //println  job.getFullName()
+		if (redOnly && hudson.model.Result.SUCCESS.equals(job.getLastBuild()?.getResult())) return null;
+		return job.isDisabled() ? null : job.getFullName()
+        // you can do operations like enable to disable
+        // job.disable()
+    }
+
+    return [getJobsInFolder: this.&getJobsInFolder, getJobsInFolderIfRed: this.&getJobsInFolderIfRed]
